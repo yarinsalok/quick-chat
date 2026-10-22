@@ -120,6 +120,23 @@ textarea {
   border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; resize: vertical; min-height: 64px;
 }
 
+.msghead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.langpick { display: inline-flex; align-items: center; gap: 6px; font-size: .85rem; color: var(--muted); }
+.langpick select {
+  font: inherit; font-size: .88rem; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px;
+}
+.langpick select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
+.out {
+  display: flex; flex-direction: column; gap: 6px;
+  border-inline-start: 3px solid var(--accent); padding-inline-start: 10px;
+}
+.outhead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .78rem; color: var(--muted); }
+.outhead .label { color: var(--accent); }
+.out textarea { background: var(--accent-soft); border-color: transparent; min-height: 56px; }
+.out.busy textarea { opacity: .6; }
+.out.err .outhead span:last-child { color: var(--warn); }
+
 .go {
   display: flex; align-items: center; justify-content: center; gap: 10px;
   min-height: 58px; border-radius: 16px; text-decoration: none;
@@ -209,8 +226,32 @@ details.install b { color: var(--ink); font-weight: 600; }
     </div>
     <div class="status" id="status" role="status"><span class="dot"></span><span id="statusText">אפשר להקליד עם 0 בהתחלה, עם +972, או להדביק מספר מכל מקום</span></div>
 
-    <label class="label" for="msg">הודעה פותחת (לא חובה)</label>
-    <textarea id="msg" rows="2" placeholder="היי, ראיתי את המודעה שלך…"></textarea>
+    <div class="msghead">
+      <label class="label" for="msg">הודעה פותחת (לא חובה)</label>
+      <label class="langpick">שליחה ב-
+        <select id="lang" aria-label="שפת ההודעה שתישלח">
+          <option value="he">עברית (בלי תרגום)</option>
+          <option value="en">English</option>
+          <option value="ar">العربية</option>
+          <option value="ru">Русский</option>
+          <option value="fr">Français</option>
+          <option value="es">Español</option>
+          <option value="de">Deutsch</option>
+          <option value="it">Italiano</option>
+          <option value="pt">Português</option>
+          <option value="tr">Türkçe</option>
+          <option value="uk">Українська</option>
+          <option value="am">አማርኛ</option>
+          <option value="th">ไทย</option>
+          <option value="zh-CN">中文</option>
+        </select>
+      </label>
+    </div>
+    <textarea id="msg" rows="2" placeholder="כותבים בעברית: היי, ראיתי את המודעה שלך…"></textarea>
+    <div class="out" id="out" hidden>
+      <div class="outhead"><span class="label" id="outLabel">ההודעה שתישלח</span><span id="outState"></span></div>
+      <textarea id="outText" rows="2" aria-labelledby="outLabel"></textarea>
+    </div>
 
     <a id="go" class="go" href="https://wa.me/" target="_blank" rel="noopener" aria-disabled="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg>
@@ -302,7 +343,7 @@ details.install b { color: var(--ink); font-weight: 600; }
 
   function link(d) {
     var url = 'https://wa.me/' + d;
-    var t = msg.value.trim();
+    var t = outgoing();
     if (t) url += '?text=' + encodeURIComponent(t);
     return url;
   }
@@ -327,8 +368,73 @@ details.install b { color: var(--ink); font-weight: 600; }
       }
       current = r.state === 'bad' ? null : d;
     }
-    go.setAttribute('aria-disabled', current ? 'false' : 'true');
+    go.setAttribute('aria-disabled', current && !tr.busy ? 'false' : 'true');
     go.href = current ? link(current) : 'https://wa.me/';
+  }
+
+  // ---- translation ----
+  // Write in Hebrew, send in the chosen language. Free engines, no key:
+  // Google's public endpoint first, MyMemory as backup.
+  var lang = $('lang'), out = $('out'), outText = $('outText'), outState = $('outState');
+  var tr = { busy: false, seq: 0, timer: null, edited: false, cache: {} };
+
+  function outgoing() {
+    if (lang.value === 'he' || !msg.value.trim()) return msg.value.trim();
+    return outText.value.trim();
+  }
+
+  function viaMyMemory(text, to) {
+    var url = 'https://api.mymemory.translated.net/get?q=' + encodeURIComponent(text) + '&langpair=he|' + to;
+    return fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      var t = j && j.responseData && j.responseData.translatedText;
+      if (!t || j.responseStatus !== 200 || /MYMEMORY WARNING|QUERY LENGTH LIMIT/i.test(t)) throw new Error('mymemory');
+      return t;
+    });
+  }
+  function viaGoogle(text, to) {
+    var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=he&tl=' + to + '&dt=t&q=' + encodeURIComponent(text);
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error('gtx'); return r.json(); }).then(function (j) {
+      return j[0].map(function (x) { return x[0]; }).join('');
+    });
+  }
+  function translate(text, to) {
+    var key = to + '|' + text;
+    if (tr.cache[key]) return Promise.resolve(tr.cache[key]);
+    return viaGoogle(text, to).catch(function () { return viaMyMemory(text, to); })
+      .then(function (t) { tr.cache[key] = t; return t; });
+  }
+
+  function setOutDir() {
+    var rtl = /^(ar|he)/.test(lang.value);
+    outText.dir = rtl ? 'rtl' : 'ltr';
+  }
+
+  function runTranslate() {
+    clearTimeout(tr.timer);
+    var text = msg.value.trim(), to = lang.value;
+    out.hidden = to === 'he' || !text;
+    if (out.hidden) { tr.busy = false; out.classList.remove('busy', 'err'); update(); return; }
+    setOutDir();
+    tr.busy = true; tr.edited = false;
+    out.classList.add('busy'); out.classList.remove('err');
+    outState.textContent = 'מתרגם…';
+    update();
+    var my = ++tr.seq;
+    tr.timer = setTimeout(function () {
+      translate(text, to).then(function (t) {
+        if (my !== tr.seq) return;
+        outText.value = t;
+        outState.textContent = 'אפשר לערוך לפני שליחה';
+      }).catch(function () {
+        if (my !== tr.seq) return;
+        out.classList.add('err');
+        outState.textContent = 'התרגום לא זמין כרגע, אפשר לכתוב כאן ידנית';
+        if (!outText.value) outText.value = text;
+      }).then(function () {
+        if (my !== tr.seq) return;
+        tr.busy = false; out.classList.remove('busy'); update();
+      });
+    }, 600);
   }
 
   function toast(text) {
@@ -392,7 +498,9 @@ details.install b { color: var(--ink); font-weight: 600; }
 
   // ---- events ----
   phone.addEventListener('input', update);
-  msg.addEventListener('input', function () { store('qc_msg', msg.value); update(); });
+  msg.addEventListener('input', function () { store('qc_msg', msg.value); runTranslate(); });
+  lang.addEventListener('change', function () { store('qc_lang', lang.value); runTranslate(); });
+  outText.addEventListener('input', function () { tr.edited = true; update(); });
   cc.addEventListener('change', function () { store('qc_cc', cc.value); update(); });
 
   phone.addEventListener('paste', function (e) {
@@ -421,6 +529,7 @@ details.install b { color: var(--ink); font-weight: 600; }
   $('clearRecents').addEventListener('click', function () { store('qc_recents', []); renderRecents(); });
 
   go.addEventListener('click', function (e) {
+    if (current && tr.busy) { e.preventDefault(); toast('רגע, התרגום עוד לא מוכן'); return; }
     if (!current) {
       e.preventDefault();
       phone.classList.remove('shake'); void phone.offsetWidth; phone.classList.add('shake');
@@ -451,6 +560,7 @@ details.install b { color: var(--ink); font-weight: 600; }
   // ---- restore + shared text (Android share target) ----
   var savedCc = store('qc_cc'); if (savedCc) cc.value = savedCc;
   var savedMsg = store('qc_msg'); if (typeof savedMsg === 'string') msg.value = savedMsg;
+  var savedLang = store('qc_lang'); if (savedLang) lang.value = savedLang;
   try {
     var q = new URLSearchParams(location.search);
     var shared = extract([q.get('text'), q.get('title'), q.get('url')].join(' '));
@@ -459,6 +569,7 @@ details.install b { color: var(--ink); font-weight: 600; }
 
   renderRecents();
   update();
+  runTranslate();
 })();
 </script>
 
