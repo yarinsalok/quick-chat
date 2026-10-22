@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E7651">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="שיחה מהירה">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>שיחה מהירה</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Secular+One&family=IBM+Plex+Sans+Hebrew:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one narrow column, thumb-first. Number field is the hero, the open button sits right under it, history below. */
+:root {
+  --bg: #ECF1EE;
+  --surface: #FFFFFF;
+  --ink: #12201B;
+  --muted: #5B6B64;
+  --line: #D3DCD7;
+  --accent: #0E7651;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #DCEFE6;
+  --warn: #A9521A;
+  --warn-soft: #F8E7DA;
+  --font-display: "Secular One", "IBM Plex Sans Hebrew", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans Hebrew", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C1411; --surface: #141F1B; --ink: #E5EEE9; --muted: #8DA197; --line: #24342D;
+    --accent: #3BBF8A; --accent-ink: #05130D; --accent-soft: #163329; --warn: #E7A06A; --warn-soft: #3A2516;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C1411; --surface: #141F1B; --ink: #E5EEE9; --muted: #8DA197; --line: #24342D;
+  --accent: #3BBF8A; --accent-ink: #05130D; --accent-soft: #163329; --warn: #E7A06A; --warn-soft: #3A2516;
+  color-scheme: dark;
+}
+
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--font-body); font-size: 16px; -webkit-tap-highlight-color: transparent; }
+* { box-sizing: border-box; }
+
+.app {
+  max-width: 460px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+
+header { display: flex; align-items: center; gap: 12px; }
+.mark {
+  width: 42px; height: 42px; border-radius: 12px; flex: none;
+  background: var(--accent); color: var(--accent-ink);
+  display: grid; place-items: center;
+}
+.mark svg { width: 24px; height: 24px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; line-height: 1.1; margin: 0; }
+.sub { margin: 2px 0 0; color: var(--muted); font-size: .9rem; }
+
+.panel {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 20px;
+  padding: 18px; display: flex; flex-direction: column; gap: 14px;
+}
+
+.label { font-size: .78rem; font-weight: 600; letter-spacing: .04em; color: var(--muted); }
+
+.numrow { display: flex; gap: 8px; align-items: stretch; direction: ltr; }
+.cc {
+  flex: none; width: 92px; font-family: var(--font-num); font-size: 1.05rem;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink);
+  padding: 0 8px; appearance: none; text-align: center;
+}
+.phone {
+  flex: 1; min-width: 0; font-family: var(--font-num); font-size: 1.7rem; letter-spacing: .02em;
+  font-variant-numeric: tabular-nums; direction: ltr; text-align: left;
+  border: 1.5px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink);
+  padding: 12px 12px; outline: none;
+}
+.phone::placeholder { color: var(--muted); opacity: .55; }
+.phone:focus, .cc:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); outline: none; }
+.phone.shake { animation: shake .35s; border-color: var(--warn); }
+@keyframes shake { 25% { transform: translateX(-6px); } 50% { transform: translateX(6px); } 75% { transform: translateX(-3px); } }
+
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.chipbtn {
+  font: inherit; font-size: .88rem; font-weight: 500; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+}
+.chipbtn svg { width: 16px; height: 16px; }
+.chipbtn:active { transform: scale(.97); }
+
+.status {
+  display: flex; align-items: center; gap: 8px; min-height: 34px;
+  font-size: .9rem; border-radius: 10px; padding: 6px 10px;
+  background: var(--bg); color: var(--muted);
+}
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.status.ok { background: var(--accent-soft); color: var(--ink); }
+.status.ok .dot { background: var(--accent); }
+.status.warn { background: var(--warn-soft); color: var(--ink); }
+.status.warn .dot { background: var(--warn); }
+.status bdi { font-family: var(--font-num); font-size: .95rem; }
+
+textarea {
+  font: inherit; font-size: 1rem; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; resize: vertical; min-height: 64px;
+}
+
+.go {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 58px; border-radius: 16px; text-decoration: none;
+  background: var(--accent); color: var(--accent-ink);
+  font-family: var(--font-display); font-size: 1.25rem; letter-spacing: .01em;
+  transition: transform .08s, opacity .15s;
+}
+.go svg { width: 22px; height: 22px; }
+.go:active { transform: scale(.98); }
+.go[aria-disabled="true"] { opacity: .45; }
+.go:focus-visible, .chipbtn:focus-visible, .rec-open:focus-visible, .rec-del:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.sectionhead { display: flex; justify-content: space-between; align-items: baseline; }
+.sectionhead h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.15rem; margin: 0; }
+.link { font: inherit; font-size: .85rem; color: var(--muted); background: none; border: 0; cursor: pointer; text-decoration: underline; padding: 4px; }
+
+.recents { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.recents li { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); }
+.recents li:last-child { border-bottom: 0; }
+.rec-open {
+  flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 12px 2px; text-decoration: none; color: var(--ink);
+}
+.rec-num { font-family: var(--font-num); font-size: 1.05rem; direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+.rec-time { font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.rec-del { flex: none; width: 36px; height: 36px; border-radius: 10px; border: 0; background: none; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.rec-del svg { width: 16px; height: 16px; }
+.empty { color: var(--muted); font-size: .9rem; margin: 0; line-height: 1.5; }
+
+details.install { border: 1px dashed var(--line); border-radius: 16px; padding: 12px 16px; }
+details.install summary { cursor: pointer; font-weight: 600; font-size: .95rem; }
+details.install ol { margin: 10px 0 2px; padding-inline-start: 20px; line-height: 1.7; font-size: .92rem; color: var(--muted); }
+details.install b { color: var(--ink); font-weight: 600; }
+.installbtn { margin-top: 10px; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: .9rem;
+  max-width: calc(100% - 32px);
+}
+
+@media (prefers-reduced-motion: reduce) { .phone.shake { animation: none; } .go, .chipbtn { transition: none; } }
+</style>
+
+</head>
+<body>
+<div class="app" dir="rtl" lang="he">
+  <header>
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/><path d="M9 10.5h6M9 13.5h4"/></svg>
+    </div>
+    <div>
+      <h1>שיחה מהירה</h1>
+      <p class="sub">פתיחת צ׳אט בוואטסאפ בלי לשמור איש קשר</p>
+    </div>
+  </header>
+
+  <section class="panel" aria-label="מספר טלפון">
+    <label class="label" for="phone">מספר טלפון</label>
+    <div class="numrow">
+      <select id="cc" class="cc" aria-label="קידומת מדינה">
+        <option value="972">+972</option>
+        <option value="970">+970</option>
+        <option value="1">+1</option>
+        <option value="44">+44</option>
+        <option value="33">+33</option>
+        <option value="49">+49</option>
+        <option value="7">+7</option>
+        <option value="380">+380</option>
+        <option value="34">+34</option>
+        <option value="39">+39</option>
+        <option value="90">+90</option>
+        <option value="971">+971</option>
+      </select>
+      <input id="phone" class="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="050-123-4567" aria-describedby="status">
+    </div>
+    <div class="tools">
+      <button type="button" class="chipbtn" id="paste">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg>
+        הדבק
+      </button>
+      <button type="button" class="chipbtn" id="clear">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        נקה
+      </button>
+    </div>
+    <div class="status" id="status" role="status"><span class="dot"></span><span id="statusText">אפשר להקליד עם 0 בהתחלה, עם +972, או להדביק מספר מכל מקום</span></div>
+
+    <label class="label" for="msg">הודעה פותחת (לא חובה)</label>
+    <textarea id="msg" rows="2" placeholder="היי, ראיתי את המודעה שלך…"></textarea>
+
+    <a id="go" class="go" href="https://wa.me/" target="_blank" rel="noopener" aria-disabled="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12z"/></svg>
+      פתח צ׳אט בוואטסאפ
+    </a>
+  </section>
+
+  <section class="panel" aria-labelledby="recentsTitle">
+    <div class="sectionhead">
+      <h2 id="recentsTitle">אחרונים</h2>
+      <button type="button" class="link" id="clearRecents" hidden>נקה הכל</button>
+    </div>
+    <ul class="recents" id="recents"></ul>
+    <p class="empty" id="recentsEmpty">מספרים שתפתח יופיעו כאן, ואפשר יהיה לחזור אליהם בנגיעה.</p>
+  </section>
+
+  <details class="install" id="installBox">
+    <summary>הוספה למסך הבית</summary>
+    <ol>
+      <li><b>אייפון:</b> לפתוח ב-Safari, ללחוץ על כפתור השיתוף ואז <b>"הוסף למסך הבית"</b>.</li>
+      <li><b>אנדרואיד:</b> לפתוח ב-Chrome, תפריט ⋮ ואז <b>"הוספה למסך הבית"</b> או <b>"התקנת אפליקציה"</b>.</li>
+    </ol>
+    <button type="button" class="chipbtn installbtn" id="installBtn" hidden>התקן עכשיו</button>
+  </details>
+
+  <div class="toast" id="toast" hidden role="status"></div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var phone = $('phone'), cc = $('cc'), msg = $('msg'), go = $('go');
+  var statusEl = $('status'), statusText = $('statusText');
+  var current = null; // normalized digits or null
+
+  function store(key, val) {
+    try {
+      if (val === undefined) return JSON.parse(localStorage.getItem(key));
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch (e) { return null; }
+  }
+
+  // Turn whatever the user typed/pasted into international digits (E.164 without +)
+  function normalize(raw, code) {
+    if (!raw) return '';
+    var hasPlus = /^\s*\+/.test(raw);
+    var d = raw.replace(/\D/g, '');
+    if (!d) return '';
+    if (hasPlus) return d;
+    if (d.indexOf('00') === 0) return d.slice(2);
+    if (d.charAt(0) === '0') return code + d.slice(1);
+    if (d.indexOf(code) === 0 && d.length >= code.length + 8) return d;
+    return code + d;
+  }
+
+  function knownCode(d) {
+    var codes = ['972', '970', '971', '380', '1', '44', '33', '49', '7', '34', '39', '90'];
+    for (var i = 0; i < codes.length; i++) if (d.indexOf(codes[i]) === 0) return codes[i];
+    return d.slice(0, Math.min(3, d.length - 7));
+  }
+
+  function pretty(d) {
+    if (!d) return '';
+    if (d.indexOf('972') === 0 || d.indexOf('970') === 0) {
+      var n = d.slice(3), c = d.slice(0, 3);
+      if (n.length === 9) return '+' + c + ' ' + n.slice(0, 2) + '-' + n.slice(2, 5) + '-' + n.slice(5);
+      if (n.length === 8) return '+' + c + ' ' + n.slice(0, 1) + '-' + n.slice(1, 4) + '-' + n.slice(4);
+    }
+    if (d.charAt(0) === '1' && d.length === 11) return '+1 ' + d.slice(1, 4) + '-' + d.slice(4, 7) + '-' + d.slice(7);
+    var code = knownCode(d), rest = d.slice(code.length);
+    return '+' + code + ' ' + rest.replace(/(\d{3})(?=\d{3,})/g, '$1 ');
+  }
+
+  // Returns {state: 'idle'|'ok'|'warn'|'bad', text}
+  function check(d) {
+    if (!d) return { state: 'idle' };
+    if (d.length < 8) return { state: 'bad', text: 'המספר קצר מדי' };
+    if (d.length > 15) return { state: 'bad', text: 'המספר ארוך מדי' };
+    if (d.indexOf('972') === 0) {
+      var n = d.slice(3);
+      if (n.charAt(0) === '5' && n.length === 9) return { state: 'ok' };
+      if (n.charAt(0) === '5' && n.length < 9) return { state: 'bad', text: 'חסרות ספרות במספר הנייד' };
+      if (n.length === 8 && /^[23489]/.test(n)) return { state: 'warn', text: 'נראה כמו קו נייח, ייתכן שאין בו וואטסאפ' };
+      if (n.length < 8) return { state: 'bad', text: 'המספר קצר מדי' };
+      if (n.length > 9) return { state: 'warn', text: 'יותר ספרות מהרגיל למספר ישראלי' };
+    }
+    return { state: 'ok' };
+  }
+
+  function link(d) {
+    var url = 'https://wa.me/' + d;
+    var t = msg.value.trim();
+    if (t) url += '?text=' + encodeURIComponent(t);
+    return url;
+  }
+
+  function update() {
+    var d = normalize(phone.value, cc.value);
+    var r = check(d);
+    statusEl.className = 'status' + (r.state === 'ok' ? ' ok' : (r.state === 'warn' || r.state === 'bad') ? ' warn' : '');
+    if (r.state === 'idle') {
+      statusText.textContent = 'אפשר להקליד עם 0 בהתחלה, עם +972, או להדביק מספר מכל מקום';
+      current = null;
+    } else {
+      statusText.innerHTML = '';
+      var lead = document.createElement('span');
+      lead.textContent = r.state === 'ok' ? 'ייפתח צ׳אט עם ' : (r.text + (r.state === 'warn' ? ' · ' : ''));
+      statusText.appendChild(lead);
+      if (r.state !== 'bad') {
+        var b = document.createElement('bdi');
+        b.dir = 'ltr';
+        b.textContent = pretty(d);
+        statusText.appendChild(b);
+      }
+      current = r.state === 'bad' ? null : d;
+    }
+    go.setAttribute('aria-disabled', current ? 'false' : 'true');
+    go.href = current ? link(current) : 'https://wa.me/';
+  }
+
+  function toast(text) {
+    var t = $('toast');
+    t.textContent = text; t.hidden = false;
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+
+  // Pull a phone-looking sequence out of any pasted/shared text
+  function extract(text) {
+    if (!text) return '';
+    var m = String(text).match(/\+?\d[\d\s\-().]{6,}\d/);
+    return m ? m[0].trim() : '';
+  }
+
+  // ---- recents ----
+  function getRecents() { return store('qc_recents') || []; }
+  function saveRecent(d) {
+    var list = getRecents().filter(function (x) { return x.n !== d; });
+    list.unshift({ n: d, t: Date.now() });
+    store('qc_recents', list.slice(0, 10));
+    renderRecents();
+  }
+  function ago(ts) {
+    var s = Math.round((ts - Date.now()) / 1000);
+    var rtf;
+    try { rtf = new Intl.RelativeTimeFormat('he', { numeric: 'auto' }); } catch (e) { return ''; }
+    var a = Math.abs(s);
+    if (a < 60) return rtf.format(Math.round(s), 'second');
+    if (a < 3600) return rtf.format(Math.round(s / 60), 'minute');
+    if (a < 86400) return rtf.format(Math.round(s / 3600), 'hour');
+    return rtf.format(Math.round(s / 86400), 'day');
+  }
+  function renderRecents() {
+    var list = getRecents(), ul = $('recents');
+    ul.innerHTML = '';
+    $('recentsEmpty').hidden = list.length > 0;
+    $('clearRecents').hidden = list.length === 0;
+    list.forEach(function (item) {
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.className = 'rec-open';
+      a.href = 'https://wa.me/' + item.n;
+      a.target = '_blank'; a.rel = 'noopener';
+      var num = document.createElement('span'); num.className = 'rec-num'; num.dir = 'ltr'; num.textContent = pretty(item.n);
+      var tm = document.createElement('span'); tm.className = 'rec-time'; tm.textContent = ago(item.t);
+      a.appendChild(num); a.appendChild(tm);
+      a.addEventListener('click', function () { saveRecent(item.n); });
+      var del = document.createElement('button');
+      del.type = 'button'; del.className = 'rec-del'; del.setAttribute('aria-label', 'הסר את ' + pretty(item.n));
+      del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+      del.addEventListener('click', function () {
+        store('qc_recents', getRecents().filter(function (x) { return x.n !== item.n; }));
+        renderRecents();
+      });
+      li.appendChild(a); li.appendChild(del);
+      ul.appendChild(li);
+    });
+  }
+
+  // ---- events ----
+  phone.addEventListener('input', update);
+  msg.addEventListener('input', function () { store('qc_msg', msg.value); update(); });
+  cc.addEventListener('change', function () { store('qc_cc', cc.value); update(); });
+
+  phone.addEventListener('paste', function (e) {
+    var text = (e.clipboardData || window.clipboardData).getData('text');
+    var found = extract(text);
+    if (found) { e.preventDefault(); phone.value = found; update(); }
+  });
+  phone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && current) { go.click(); }
+  });
+
+  $('paste').addEventListener('click', function () {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      phone.focus(); toast('לחיצה ארוכה על השדה ואז "הדבק"'); return;
+    }
+    navigator.clipboard.readText().then(function (text) {
+      var found = extract(text);
+      if (found) { phone.value = found; update(); phone.blur(); }
+      else toast('לא נמצא מספר טלפון בטקסט שהועתק');
+    }).catch(function () {
+      phone.focus(); toast('לחיצה ארוכה על השדה ואז "הדבק"');
+    });
+  });
+
+  $('clear').addEventListener('click', function () { phone.value = ''; update(); phone.focus(); });
+  $('clearRecents').addEventListener('click', function () { store('qc_recents', []); renderRecents(); });
+
+  go.addEventListener('click', function (e) {
+    if (!current) {
+      e.preventDefault();
+      phone.classList.remove('shake'); void phone.offsetWidth; phone.classList.add('shake');
+      phone.focus();
+      return;
+    }
+    go.href = link(current);
+    saveRecent(current);
+  });
+
+  // ---- install (Android prompt + hide when already installed) ----
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferred = e; $('installBtn').hidden = false;
+  });
+  $('installBtn').addEventListener('click', function () {
+    if (!deferred) return;
+    deferred.prompt();
+    deferred.userChoice.finally(function () { deferred = null; $('installBtn').hidden = true; });
+  });
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone;
+  if (standalone) $('installBox').hidden = true;
+
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {}
+  }
+
+  // ---- restore + shared text (Android share target) ----
+  var savedCc = store('qc_cc'); if (savedCc) cc.value = savedCc;
+  var savedMsg = store('qc_msg'); if (typeof savedMsg === 'string') msg.value = savedMsg;
+  try {
+    var q = new URLSearchParams(location.search);
+    var shared = extract([q.get('text'), q.get('title'), q.get('url')].join(' '));
+    if (shared) phone.value = shared;
+  } catch (e) {}
+
+  renderRecents();
+  update();
+})();
+</script>
+
+</body>
+</html>
